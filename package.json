@@ -9,10 +9,14 @@
     "test": "playwright test",
     "test:serial": "playwright test --workers=1",
     "test:ui": "playwright test --ui",
+    "test:quarantine": "node -e \"process.env.RUN_QUARANTINED='1';require('child_process').spawnSync('npx',['playwright','test'],{stdio:'inherit',shell:true,env:process.env})\"",
+    "visual:update": "playwright test visual --update-snapshots",
+    "flaky": "node tools/flaky.mjs",
     "report": "playwright show-report",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.49.0",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0"
