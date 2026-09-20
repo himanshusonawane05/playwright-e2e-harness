@@ -5,3 +5,5 @@ playwright/.auth/
 blob-report/
 .env
 app/*.log
+
+*.log
