@@ -15,7 +15,8 @@ Chromium.
 |---|---|
 | Full suite, parallel | **4.1 s** |
 | Full suite, serial (1 worker) | **9.4 s** |
-| Stability | **5 of 5 runs green** on an idle machine |
+| CI | **all 8 shards green** across 4 browsers |
+| Local stability | intermittent - see the case study below |
 | Login cost across the suite | **one** UI login (0.32 s), reused by every test |
 | Artifacts on a green run | none |
 | Regression check | breaking one line of app code failed 4 tests with traces attached |
@@ -128,12 +129,21 @@ failing 2 runs in 5, with `page.goto` timing out. The investigation, in order:
    browsers: each loaded the page in **~40 ms**. Not concurrency.
 4. **What else was running?** A game installer was using **99.5% of all 12 threads**.
    Once it finished: **0 failures in 5 runs**, 4.0-4.6 s at every worker count tried.
+5. **It came back on an idle machine.** Later runs stalled again with nothing above 2%
+   CPU and 21 GB RAM free. A warm, already-running server stayed fast (24 passed in 4.2 s,
+   216 requests, slowest 73 ms); runs against a freshly spawned server stalled. Avast's
+   behaviour shield (`aswidsagent`) is running on this machine and hooks newly spawned
+   processes and loopback connections, which matches the signature.
 
-The root cause was CPU starvation from an unrelated process, and every "fix" attempted
-before finding it - tuning worker counts, changing artifact settings - was measuring
-noise. Two of those conclusions were wrong and are corrected above.
+**Status: local-only, unresolved, and not reproduced in CI** - GitHub Actions runs all
+8 shards green. If you hit this pattern on your own machine, test it by temporarily
+disabling your endpoint-security shields and re-running.
 
-The transferable lesson: **measure before tuning, and know what else is on the machine.**
+Two lessons, one of them at my own expense: **measure before tuning** - the worker-count
+and video-capture "fixes" attempted before finding the CPU hog were measuring noise, and
+both are corrected above. And **a green suite on a busy laptop proves nothing**; the
+number that matters is the one from CI.
+
 The diagnostic tools are in `tools/`, and `LOG_REQUESTS=1` stays in the app because "did
 this request even reach the server" should always be one command away.
 

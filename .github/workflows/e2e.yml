@@ -69,14 +69,11 @@ jobs:
         if: steps.browser-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps ${{ steps.browsers.outputs.list }}
 
-      # Visual baselines are per-platform and the committed ones are win32. Until Linux
-      # baselines are generated and committed (see the visual-baselines job), the blocking
-      # run skips them rather than failing on a missing snapshot.
       # --reporter=blob is what actually produces a mergeable report; setting only the
       # output dir leaves the config's reporters in place and writes no blob at all.
       # `github` stays on so failures still annotate the PR diff.
       - name: Run tests
-        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2 --grep-invert visual --reporter=blob,github
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2 --reporter=blob,github
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -113,29 +110,6 @@ jobs:
       - run: npx playwright merge-reports --reporter json ./all-blobs > results.json
       - run: node tools/flaky.mjs results.json
         continue-on-error: true
-
-  visual-baselines:
-    name: generate Linux visual baselines
-    runs-on: ubuntu-latest
-    # Non-blocking: its job is to hand you baselines to review and commit, not to gate a
-    # merge. Once the Linux snapshots are committed, drop --grep-invert from the test job
-    # and delete this one.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --project=chromium --grep visual --update-snapshots
-        env:
-          PORT: "8090"
-          TIP_URL: "http://127.0.0.1:9/tip"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-visual-baselines
-          path: tests/**/*-snapshots/**
-          retention-days: 14
 
   quarantined:
     name: quarantined tests (non-blocking)

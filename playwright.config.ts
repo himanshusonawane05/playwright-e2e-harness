@@ -82,16 +82,20 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
+      /* Visual specs are chromium-only; maintaining four baseline sets is not worth it. */
+      testIgnore: /visual\.spec\.ts/,
       name: "firefox",
       use: { ...devices["Desktop Firefox"], storageState: "playwright/.auth/user.json" },
       dependencies: ["setup"],
     },
     {
+      testIgnore: /visual\.spec\.ts/,
       name: "webkit",
       use: { ...devices["Desktop Safari"], storageState: "playwright/.auth/user.json" },
       dependencies: ["setup"],
     },
     {
+      testIgnore: /visual\.spec\.ts/,
       name: "mobile-chrome",
       use: { ...devices["Pixel 7"], storageState: "playwright/.auth/user.json" },
       dependencies: ["setup"],
@@ -117,3 +121,5 @@ export default defineConfig({
     stderr: "pipe",
   },
 });
+
+

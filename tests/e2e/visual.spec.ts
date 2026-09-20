@@ -21,7 +21,14 @@ import { test, expect, gotoApp } from "../fixtures";
  * blessed into the repo forever.
  */
 
+/**
+ * These run on the chromium project only - see `testIgnore` on the other projects in
+ * playwright.config.ts. One canonical browser keeps the baseline set reviewable; four
+ * would multiply every approval by four, and cross-browser behaviour is already covered
+ * by the functional specs that do run everywhere.
+ */
 test.describe("visual", () => {
+
   test("empty state", async ({ authedPage }) => {
     // The third-party tip is stubbed: its content must never decide whether the suite is
     // green, and an empty tip box keeps the shot stable.
