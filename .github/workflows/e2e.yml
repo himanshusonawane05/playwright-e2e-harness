@@ -78,6 +78,45 @@ jobs:
           path: test-results/**/trace.zip
           retention-days: 7
 
+  flaky:
+    name: flake detector
+    if: ${{ !cancelled() }}
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: all-blobs
+          pattern: blob-*
+          merge-multiple: true
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Turn the blobs into a json report, then look for anything that only passed on a
+      # retry. Non-blocking: a flake should be visible, not a merge blocker.
+      - run: npx playwright merge-reports --reporter json ./all-blobs > results.json
+      - run: node tools/flaky.mjs results.json
+        continue-on-error: true
+
+  quarantined:
+    name: quarantined tests (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Known-flaky tests keep running so they cannot rot, but they never fail the build.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium
+        env:
+          RUN_QUARANTINED: "1"
+          PORT: "8090"
+          TIP_URL: "http://127.0.0.1:9/tip"
+
   report:
     name: merge report
     if: ${{ !cancelled() }}
