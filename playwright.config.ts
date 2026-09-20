@@ -18,15 +18,33 @@ export default defineConfig({
      gets fixed. Anything that needs more than this belongs in quarantine, not in a
      higher retry count. */
   retries: CI ? 1 : 0,
-  /* Each worker drives a full browser, so the useful ceiling tracks physical cores, not
-     threads. Measured on a 6-core/12-thread dev box with background apps running: 3
-     workers is green in ~5s, while Playwright's default (50% of logical CPUs = 6) made
-     page loads time out. CI runners are quieter and dedicated, so they get more. */
-  workers: CI ? "50%" : "25%",
+  /* Measured on an idle 6-core/12-thread box: 3, 6 and 12 workers are all green, at 4.1s,
+     4.0s and 4.6s. Parallelism stops paying past the core count for a suite this size, so
+     the default is left to Playwright (50% of logical CPUs). What actually breaks runs is
+     competing CPU load, not worker count - see the README. */
+  workers: CI ? "50%" : undefined,
   /* Fail the CI build if someone commits test.only. */
   forbidOnly: CI,
   timeout: 30_000,
-  expect: { timeout: 5_000 },
+  expect: {
+    timeout: 5_000,
+    toHaveScreenshot: {
+      /* Anti-aliasing and font hinting differ between machines, so a zero-tolerance
+         comparison fails on noise. 0.2 is the per-pixel colour tolerance; the ratio cap
+         is what actually decides - 1% of pixels may differ, which catches a moved button
+         or a broken layout while ignoring sub-pixel text rendering. */
+      threshold: 0.2,
+      maxDiffPixelRatio: 0.01,
+      /* CSS animations mid-flight are the classic screenshot flake. */
+      animations: "disabled",
+      caret: "hide",
+    },
+  },
+
+  /* Quarantined tests are known-flaky and must not block a merge. They still run, in a
+     separate non-blocking job, so they cannot rot unnoticed. See docs/quarantine.md. */
+  grepInvert: process.env.RUN_QUARANTINED === "1" ? undefined : /@quarantine/,
+  grep: process.env.RUN_QUARANTINED === "1" ? /@quarantine/ : undefined,
 
   reporter: [
     ["list"],
@@ -43,12 +61,12 @@ export default defineConfig({
        failure because the first failure is the one you want to debug; measurement showed
        tracing costs far less than video. */
     trace: "retain-on-failure",
-    /* Measured on a 6-core machine: "retain-on-failure" records video for EVERY test and
-       throws it away when the test passes. That is an ffmpeg pipeline per context, and at
-       4+ workers it starved the machine badly enough that page.goto timed out - i.e. the
-       artifact settings were manufacturing the flakes. "on-first-retry" records only the
-       run that actually needs diagnosing. */
-    video: "on-first-retry",
+    /* "retain-on-failure" records video for EVERY test and discards it on pass, which
+       costs a measured ~7% on an idle 6-core machine (4.0s -> 4.3s at 6 workers). Worth
+       it: the video of the FIRST failure is often what explains it. Note the cost is not
+       constant - on a CPU-starved machine the same setting amplifies contention badly,
+       so "on-first-retry" is the right switch for constrained CI runners. */
+    video: "retain-on-failure",
     screenshot: "only-on-failure",
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
