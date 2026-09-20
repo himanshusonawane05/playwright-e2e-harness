@@ -1,0 +1,107 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A new push supersedes the run in progress; no point paying for stale results.
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PORT: "8090"
+  # Never let CI reach the real third-party service: a closed local port fails fast
+  # and keeps the suite deterministic.
+  TIP_URL: "http://127.0.0.1:9/tip"
+
+jobs:
+  test:
+    name: ${{ matrix.project }} (shard ${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, mobile-chrome]
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Browser binaries are ~1GB and change only when Playwright does, so key the
+      # cache on the resolved version rather than on the lockfile as a whole.
+      - name: Resolve Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        id: browser-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install browser (with system deps)
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps ${{ matrix.project == 'mobile-chrome' && 'chromium' || matrix.project }}
+
+      - name: Install system deps only
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps ${{ matrix.project == 'mobile-chrome' && 'chromium' || matrix.project }}
+
+      - name: Run tests
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2
+        env:
+          # Each shard reports into a blob so the shards can be merged into one report.
+          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-report
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: blob-${{ matrix.project }}-${{ matrix.shard }}
+          path: blob-report
+          retention-days: 7
+
+      # Traces are what make a CI failure debuggable locally; keep them only on failure.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: traces-${{ matrix.project }}-${{ matrix.shard }}
+          path: test-results/**/trace.zip
+          retention-days: 7
+
+  report:
+    name: merge report
+    if: ${{ !cancelled() }}
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: all-blobs
+          pattern: blob-*
+          merge-multiple: true
+
+      - name: Merge shards into one HTML report
+        run: npx playwright merge-reports --reporter html ./all-blobs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: html-report
+          path: playwright-report
+          retention-days: 14
