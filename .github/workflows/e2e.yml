@@ -43,19 +43,31 @@ jobs:
         id: pw
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
+      # The `setup` project always runs on chromium, so every job needs chromium plus its
+      # own browser. The cache key includes the project because each job's browser set
+      # differs - one shared key would serve firefox a chromium-only cache.
+      - name: Work out which browsers this job needs
+        id: browsers
+        run: |
+          case "${{ matrix.project }}" in
+            firefox) echo "list=chromium firefox" >> "$GITHUB_OUTPUT" ;;
+            webkit)  echo "list=chromium webkit"  >> "$GITHUB_OUTPUT" ;;
+            *)       echo "list=chromium"         >> "$GITHUB_OUTPUT" ;;
+          esac
+
       - uses: actions/cache@v4
         id: browser-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-${{ matrix.project }}
 
-      - name: Install browser (with system deps)
+      - name: Install browsers (with system deps)
         if: steps.browser-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps ${{ matrix.project == 'mobile-chrome' && 'chromium' || matrix.project }}
+        run: npx playwright install --with-deps ${{ steps.browsers.outputs.list }}
 
       - name: Install system deps only
         if: steps.browser-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps ${{ matrix.project == 'mobile-chrome' && 'chromium' || matrix.project }}
+        run: npx playwright install-deps ${{ steps.browsers.outputs.list }}
 
       # Visual baselines are per-platform and the committed ones are win32. Until Linux
       # baselines are generated and committed (see the visual-baselines job), the blocking
