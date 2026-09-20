@@ -1,0 +1,23 @@
+{
+  "name": "qa-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reference Playwright end-to-end harness against a self-hosted demo app",
+  "type": "module",
+  "scripts": {
+    "app": "node app/server.js",
+    "test": "playwright test",
+    "test:serial": "playwright test --workers=1",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

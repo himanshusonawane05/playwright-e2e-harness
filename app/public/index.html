@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+
+    <section id="auth-view" class="view" data-testid="auth-view" hidden>
+      <div class="card">
+        <h1 class="brand">Todo</h1>
+        <p class="mode-label" data-testid="auth-mode-label">Sign in</p>
+
+        <form id="auth-form" novalidate>
+          <div class="field">
+            <label for="auth-email">Email</label>
+            <input id="auth-email" data-testid="auth-email" type="email"
+                   autocomplete="email" placeholder="you@example.com" required />
+          </div>
+          <div class="field">
+            <label for="auth-password">Password</label>
+            <input id="auth-password" data-testid="auth-password" type="password"
+                   autocomplete="current-password" placeholder="Password" required />
+          </div>
+
+          <button type="submit" id="auth-submit" data-testid="auth-submit" class="btn btn-primary">
+            Sign in
+          </button>
+
+          <p class="auth-error" id="auth-error" data-testid="auth-error" role="alert" hidden></p>
+
+          <button type="button" id="auth-toggle" data-testid="auth-toggle" class="link-btn">
+            Create account
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section id="app-view" class="view" data-testid="app-view" hidden>
+      <header class="app-header">
+        <h1 class="brand">Todo</h1>
+        <div class="user">
+          <span class="user-email" id="current-user" data-testid="current-user"></span>
+          <button type="button" id="logout" data-testid="logout" class="btn btn-ghost">Log out</button>
+        </div>
+      </header>
+
+      <div class="tip" data-testid="tip"></div>
+      <p class="tip-source" id="tip-source" data-testid="tip-source"></p>
+
+      <form id="todo-form" class="todo-form" novalidate>
+        <label for="todo-input" class="visually-hidden">New task</label>
+        <input id="todo-input" data-testid="todo-input" type="text"
+               placeholder="Add a task" autocomplete="off" />
+        <button type="submit" id="todo-add" data-testid="todo-add" class="btn btn-primary">Add</button>
+      </form>
+
+      <p class="todo-error" id="todo-error" data-testid="todo-error" role="alert" hidden></p>
+
+      <p class="todo-count" id="todo-count" data-testid="todo-count"></p>
+
+      <ul id="todo-list" data-testid="todo-list" class="todo-list"></ul>
+
+      <p class="empty-state" id="empty-state" data-testid="empty-state" hidden>No tasks yet</p>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
