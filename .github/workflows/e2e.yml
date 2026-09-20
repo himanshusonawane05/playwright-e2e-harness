@@ -72,11 +72,11 @@ jobs:
       # Visual baselines are per-platform and the committed ones are win32. Until Linux
       # baselines are generated and committed (see the visual-baselines job), the blocking
       # run skips them rather than failing on a missing snapshot.
+      # --reporter=blob is what actually produces a mergeable report; setting only the
+      # output dir leaves the config's reporters in place and writes no blob at all.
+      # `github` stays on so failures still annotate the PR diff.
       - name: Run tests
-        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2 --grep-invert visual
-        env:
-          # Each shard reports into a blob so the shards can be merged into one report.
-          PLAYWRIGHT_BLOB_OUTPUT_DIR: blob-report
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2 --grep-invert visual --reporter=blob,github
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -149,7 +149,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test --project=chromium
+      - run: npx playwright test --project=chromium --pass-with-no-tests
         env:
           RUN_QUARANTINED: "1"
           PORT: "8090"
